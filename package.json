@@ -1,6 +1,6 @@
 {
   "name": "@jesushr0013/native-timer",
-  "version": "8.0.2",
+  "version": "8.0.3",
   "description": "Plugin nativo para timer con foreground service",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -63,7 +63,8 @@
       "src": "android"
     },
     "ios": {
-      "src": "ios"
+      "src": "ios",
+      "name": "MeycagesalNativeTimer"
     }
   }
 }
