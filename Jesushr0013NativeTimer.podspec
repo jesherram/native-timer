@@ -3,7 +3,8 @@ require 'json'
 package = JSON.parse(File.read(File.join(__dir__, 'package.json')))
 
 Pod::Spec.new do |s|
-  s.name = 'MeycagesalNativeTimer'
+  s.name = 'Jesushr0013NativeTimer'
+  s.module_name = 'MeycagesalNativeTimer'
   s.version = package['version']
   s.summary = package['description']
   s.license = package['license']
