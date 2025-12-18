@@ -1,6 +1,6 @@
 {
   "name": "@jesushr0013/native-timer",
-  "version": "7.0.3",
+  "version": "7.0.4",
   "description": "Plugin nativo para timer con foreground service",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -10,7 +10,7 @@
     "android/",
     "dist/",
     "ios/",
-    "MeycagesalNativeTimer.podspec",
+    "Jesushr0013NativeTimer.podspec",
     "NativeTimerKit.podspec"
   ],
   "author": "Meycagesal",
@@ -63,8 +63,7 @@
       "src": "android"
     },
     "ios": {
-      "src": "ios",
-      "name": "MeycagesalNativeTimer"
+      "src": "ios"
     }
   }
 }
