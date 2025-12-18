@@ -7,9 +7,9 @@ Pod::Spec.new do |s|
   s.version = package['version']
   s.summary = package['description']
   s.license = package['license']
-  s.homepage = package['repository']['url'] rescue 'https://github.com/meycagesal/native-timer'
+  s.homepage = package['repository']['url'] rescue 'https://github.com/jesherram/native-timer'
   s.author = package['author']
-  s.source = { :git => 'https://github.com/meycagesal/native-timer.git', :tag => s.version.to_s }
+  s.source = { :git => 'https://github.com/jesherram/native-timer.git', :tag => s.version.to_s }
   s.source_files = 'ios/Plugin/**/*.{swift,h,m,c,cc,mm,cpp}', 'ios/LiveActivitiesKit/**/*.{swift,h,m,c,cc,mm,cpp}'
   s.public_header_files = 'ios/LiveActivitiesKit/*.h'
 

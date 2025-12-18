@@ -3,9 +3,9 @@ Pod::Spec.new do |s|
   s.version = '1.0.0'
   s.summary = 'A Swift framework for creating dynamic Live Activities layouts for Native Timer'
   s.license = 'MIT'
-  s.homepage = 'https://github.com/meycagesal/native-timer'
+  s.homepage = 'https://github.com/jesherram/native-timer'
   s.author = { 'Meycagesal' => 'info@meycagesal.com' }
-  s.source = { :git => 'https://github.com/meycagesal/native-timer.git', :tag => s.version.to_s }
+  s.source = { :git => 'https://github.com/jesherram/native-timer.git', :tag => s.version.to_s }
   s.source_files = 'ios/LiveActivitiesKit/**/*.{swift,h,m,c,cc,mm,cpp}'
   s.public_header_files = 'ios/LiveActivitiesKit/*.h'
 

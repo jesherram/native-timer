@@ -16,10 +16,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "local"
+    "url": "https://github.com/jesherram/native-timer"
   },
   "bugs": {
-    "url": "local"
+    "url": "https://github.com/jesherram/native-timer/issues"
   },
   "keywords": [
     "capacitor",
