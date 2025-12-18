@@ -1,6 +1,6 @@
 {
   "name": "@jesushr0013/native-timer",
-  "version": "8.0.1",
+  "version": "8.0.2",
   "description": "Plugin nativo para timer con foreground service",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -10,7 +10,8 @@
     "android/",
     "dist/",
     "ios/",
-    "MeycagesalNativeTimer.podspec"
+    "MeycagesalNativeTimer.podspec",
+    "NativeTimerKit.podspec"
   ],
   "author": "Meycagesal",
   "license": "MIT",
