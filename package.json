@@ -1,6 +1,6 @@
 {
   "name": "@jesushr0013/native-timer",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "description": "Plugin nativo para timer con foreground service",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -10,16 +10,17 @@
     "android/",
     "dist/",
     "ios/",
-    "MeycagesalNativeTimer.podspec"
+    "MeycagesalNativeTimer.podspec",
+    "NativeTimerKit.podspec"
   ],
   "author": "Meycagesal",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "local"
+    "url": "https://github.com/jesherram/native-timer"
   },
   "bugs": {
-    "url": "local"
+    "url": "https://github.com/jesherram/native-timer/issues"
   },
   "keywords": [
     "capacitor",
