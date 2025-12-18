@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/notification_background"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@android:color/transparent">
+
+    <!-- Timer principal grande (solo para vista expandida) -->
+    <TextView
+        android:id="@+id/timer_display"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="00:00:00"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:gravity="center"
+        android:fontFamily="monospace"
+        android:layout_marginBottom="12dp"
+        android:background="@android:color/transparent" />
+
+    <!-- Texto de inicio -->
+    <TextView
+        android:id="@+id/start_time"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Inicio: 08:30"
+        android:textSize="16sp"
+        android:textColor="@android:color/white"
+        android:gravity="center"
+        android:alpha="0.8"
+        android:layout_marginBottom="16dp"
+        android:background="@android:color/transparent" />
+
+    <!-- Barra de progreso -->
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:max="480"
+        android:progress="0"
+        android:progressTint="@android:color/white"
+        android:progressBackgroundTint="#33FFFFFF"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>

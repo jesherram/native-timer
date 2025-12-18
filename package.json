@@ -1,0 +1,68 @@
+{
+  "name": "@meycagesal/native-timer",
+  "version": "1.0.0",
+  "description": "Plugin nativo para timer con foreground service",
+  "main": "dist/plugin.cjs.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "unpkg": "dist/plugin.js",
+  "files": [
+    "android/",
+    "dist/",
+    "ios/",
+    "MeycagesalNativeTimer.podspec"
+  ],
+  "author": "Meycagesal",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "local"
+  },
+  "bugs": {
+    "url": "local"
+  },
+  "keywords": [
+    "capacitor",
+    "plugin",
+    "native",
+    "timer",
+    "android",
+    "foreground-service"
+  ],
+  "scripts": {
+    "verify": "npm run verify:ios && npm run verify:android && npm run verify:web",
+    "verify:ios": "cd ios && pod install && xcodebuild -workspace Plugin.xcworkspace -scheme Plugin -destination generic/platform=iOS && cd ..",
+    "verify:android": "cd android && ./gradlew clean build test && cd ..",
+    "verify:web": "npm run build",
+    "build": "npm run clean && tsc && rollup -c rollup.config.js",
+    "clean": "rimraf ./dist",
+    "watch": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/docgen": "^0.0.18",
+    "@capacitor/ios": "^7.4.3",
+    "@ionic/prettier-config": "^1.0.1",
+    "@ionic/swiftlint-config": "^1.1.2",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "prettier": "~2.3.0",
+    "prettier-plugin-java": "~1.0.2",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.79.2",
+    "swiftlint": "^1.0.1",
+    "typescript": "~4.1.5"
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^7.4.3"
+  },
+  "capacitor": {
+    "android": {
+      "src": "android"
+    },
+    "ios": {
+      "src": "ios"
+    }
+  }
+}

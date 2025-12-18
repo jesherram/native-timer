@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Colores para la notificación personalizada -->
+    <color name="notification_background">#FF1976D2</color>
+    <color name="notification_title_color">#FFFFFF</color>
+    <color name="notification_timer_color">#FFFFFF</color>
+    <color name="notification_subtitle_color">#E3F2FD</color>
+    <color name="notification_accent_color">#FF4CAF50</color>
+    <color name="notification_secondary_background">#FF0D47A1</color>
+</resources>
