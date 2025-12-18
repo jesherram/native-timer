@@ -1,6 +1,6 @@
 {
   "name": "@meycagesal/native-timer",
-  "version": "1.0.0",
+  "version": "8.0.0",
   "description": "Plugin nativo para timer con foreground service",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -40,14 +40,14 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@capacitor/android": "^7.4.3",
-    "@capacitor/core": "^7.4.3",
-    "@capacitor/docgen": "^0.0.18",
-    "@capacitor/ios": "^7.4.3",
-    "@ionic/prettier-config": "^1.0.1",
-    "@ionic/swiftlint-config": "^1.1.2",
-    "@rollup/plugin-node-resolve": "^16.0.1",
-    "prettier": "~2.3.0",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/docgen": "^0.3.0",
+    "@capacitor/ios": "^8.0.0",
+    "@ionic/prettier-config": "^4.0.0",
+    "@ionic/swiftlint-config": "^2.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "prettier": "~3.4.2",
     "prettier-plugin-java": "~1.0.2",
     "rimraf": "^3.0.2",
     "rollup": "^2.79.2",
@@ -55,7 +55,7 @@
     "typescript": "~4.1.5"
   },
   "peerDependencies": {
-    "@capacitor/core": "^7.4.3"
+    "@capacitor/core": ">=8.0.0"
   },
   "capacitor": {
     "android": {
