@@ -3,7 +3,6 @@ import WidgetKit
 
 #if canImport(ActivityKit)
 import ActivityKit
-#endif
 
 @available(iOS 16.2, *)
 public struct NativeTimerWidget: Widget {
@@ -477,3 +476,4 @@ public struct NativeTimerWidgetBundle: WidgetBundle {
     
     public init() {}
 }
+#endif
