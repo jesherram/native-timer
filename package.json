@@ -10,6 +10,7 @@
     "android/",
     "dist/",
     "ios/",
+    "Package.swift",
     "Jesushr0013NativeTimer.podspec",
     "NativeTimerKit.podspec"
   ],
