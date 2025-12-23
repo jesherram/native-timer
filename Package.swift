@@ -2,24 +2,24 @@
 import PackageDescription
 
 let package = Package(
-    name: "MeycagesalNativeTimer",
+    name: "Jesushr0013NativeTimer",
     platforms: [.iOS(.v15)],
     products: [
         .library(
-            name: "MeycagesalNativeTimer",
-            targets: ["MeycagesalNativeTimer"])
+            name: "Jesushr0013NativeTimer",
+            targets: ["Jesushr0013NativeTimer"])
     ],
     dependencies: [
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "8.0.0")
     ],
     targets: [
         .target(
-            name: "MeycagesalNativeTimer",
+            name: "Jesushr0013NativeTimer",
             dependencies: [
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
                 .product(name: "Cordova", package: "capacitor-swift-pm")
             ],
-            path: ".",
+            path: "ios",
             sources: ["Plugin", "LiveActivitiesKit"])
     ]
 )
