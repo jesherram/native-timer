@@ -1,6 +1,6 @@
 {
   "name": "@jesushr0013/native-timer",
-  "version": "8.0.8",
+  "version": "8.0.9",
   "description": "Plugin nativo para timer con foreground service",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
