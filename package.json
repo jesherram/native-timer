@@ -63,7 +63,8 @@
       "src": "android"
     },
     "ios": {
-      "src": "ios"
+      "src": "ios",
+      "spm": true
     }
   }
 }
