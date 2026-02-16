@@ -19,5 +19,15 @@ Pod::Spec.new do |s|
   s.swift_version = '5.1'
   
   # Frameworks condicionais - ActivityKit apenas para iOS 16.2+
-  s.weak_frameworks = 'WidgetKit', 'SwiftUI', 'ActivityKit'
+  # SwiftUICore es necesario como weak_framework porque Xcode 16+ lo separa de SwiftUI
+  # y en iOS 16.x no existe como framework independiente
+  s.weak_frameworks = 'WidgetKit', 'SwiftUI', 'ActivityKit', 'SwiftUICore'
+  
+  # Linker flags para asegurar weak linking de SwiftUICore
+  s.pod_target_xcconfig = {
+    'OTHER_LDFLAGS' => '$(inherited) -weak_framework SwiftUICore'
+  }
+  s.user_target_xcconfig = {
+    'OTHER_LDFLAGS' => '$(inherited) -weak_framework SwiftUICore'
+  }
 end

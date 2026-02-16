@@ -1,7 +1,6 @@
+#if canImport(ActivityKit)
 import SwiftUI
 import WidgetKit
-
-#if canImport(ActivityKit)
 import ActivityKit
 
 @available(iOS 16.2, *)

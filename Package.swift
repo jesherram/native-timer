@@ -20,6 +20,9 @@ let package = Package(
                 .product(name: "Cordova", package: "capacitor-swift-pm")
             ],
             path: "ios",
-            sources: ["Plugin", "LiveActivitiesKit"])
+            sources: ["Plugin", "LiveActivitiesKit"],
+            linkerSettings: [
+                .unsafeFlags(["-weak_framework", "SwiftUICore"])
+            ])
     ]
 )
