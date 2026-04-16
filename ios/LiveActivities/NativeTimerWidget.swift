@@ -3,8 +3,8 @@ import SwiftUI
 import WidgetKit
 import ActivityKit
 
-#if canImport(NativeTimerCore)
-import NativeTimerCore
+#if canImport(Jesushr0013NativeTimer)
+import Jesushr0013NativeTimer
 #elseif canImport(MeycagesalNativeTimer)
 import MeycagesalNativeTimer
 #endif

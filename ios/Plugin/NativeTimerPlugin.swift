@@ -1,10 +1,6 @@
 import Foundation
 import Capacitor
 
-#if canImport(NativeTimerCore)
-import NativeTimerCore
-#endif
-
 #if canImport(ActivityKit)
 import ActivityKit
 #endif
