@@ -3,7 +3,13 @@ import SwiftUI
 import WidgetKit
 import ActivityKit
 
-@available(iOS 16.2, *)
+#if canImport(NativeTimerCore)
+import NativeTimerCore
+#elseif canImport(MeycagesalNativeTimer)
+import MeycagesalNativeTimer
+#endif
+
+@available(iOS 16.1, *)
 public struct NativeTimerWidget: Widget {
     public var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkSessionTimerAttributes.self) { context in
@@ -467,7 +473,7 @@ extension Color {
     }
 }
 
-@available(iOS 16.2, *)
+@available(iOS 16.1, *)
 public struct NativeTimerWidgetBundle: WidgetBundle {
     public var body: some Widget {
         NativeTimerWidget()
