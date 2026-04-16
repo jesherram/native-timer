@@ -4,26 +4,59 @@ A Capacitor 8+ plugin for **work shift time tracking** (jornada laboral) with **
 
 The widget displays a live "Jornada Activa" (Active Shift) timer designed specifically for tracking work hours.
 
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Architecture (v8.2.0+)](#architecture-v820)
+- [Requirements](#requirements)
+- [Installation (New Project)](#installation-new-project)
+- [iOS Setup](#ios-setup)
+- [Android Setup](#android-setup)
+- [Usage](#usage)
+- [API Reference](#api-reference)
+- [Upgrading from v8.1.x to v8.2.0](#upgrading-from-v81x-to-v820)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+
+---
+
 ## Features
 
 - **Android**: Persistent foreground service with notification for shift tracking
-- **iOS**: Live Activities with Dynamic Island and Lock Screen widget showing "Jornada Activa" (iOS 16.2+)
-- **iOS**: Compatible with iOS 15+ (plugin) — SwiftUI isolated in separate target, no crash on iOS 16
+- **iOS**: Live Activities with Dynamic Island and Lock Screen widget showing "⚡ Jornada Activa" (iOS 16.2+)
+- **iOS**: Compatible with iOS 15+ — SwiftUI is **completely isolated** in a separate target, so there is **no crash on iOS 16**
 - Background-safe timer that survives app suspension — ideal for long work shifts
 - Customizable primary color for notifications and widgets
 - Smart notification management (foreground/background aware)
 
+---
+
 ## Architecture (v8.2.0+)
 
-The iOS code is split into **3 independent targets** to prevent the main app from linking SwiftUI/SwiftUICore:
+Starting from v8.2.0, the iOS code is split into **3 independent targets** to prevent the main app from linking SwiftUI/SwiftUICore:
 
-| Target | Contains | SwiftUI? | Purpose |
-|--------|----------|----------|---------|
-| `NativeTimerCore` | `NativeTimerManager`, `WorkSessionTimerAttributes` | No | Shared timer logic & ActivityKit models |
-| `Jesushr0013NativeTimer` | `NativeTimerPlugin` | No | Capacitor bridge (auto-discovered) |
-| `NativeTimerLiveActivities` | `NativeTimerWidget` | Yes | Widget UI for Dynamic Island & Lock Screen |
+```
+ios/
+├── Core/                          ← NativeTimerCore target
+│   ├── NativeTimerManager.swift       (timer logic, ActivityKit management)
+│   └── WorkSessionTimerAttributes.swift (ActivityAttributes model)
+├── Plugin/                        ← Jesushr0013NativeTimer target
+│   └── NativeTimerPlugin.swift        (Capacitor bridge)
+└── LiveActivities/                ← NativeTimerLiveActivities target
+    └── NativeTimerWidget.swift        (SwiftUI widget for Dynamic Island)
+```
 
-This ensures the **main app binary never links SwiftUI**, fixing the `SwiftUICore not available` crash on iOS 16.
+| Target | SwiftUI? | What it does |
+|--------|----------|--------------|
+| **NativeTimerCore** | **No** | Timer logic, notification management, `WorkSessionTimerAttributes` model, `NativeTimerManager` class. Safe on iOS 15+. |
+| **Jesushr0013NativeTimer** | **No** | Capacitor plugin bridge (`NativeTimerPlugin`). Depends on Core. Auto-discovered by Capacitor. Safe on iOS 15+. |
+| **NativeTimerLiveActivities** | **Yes** | SwiftUI widget for Dynamic Island and Lock Screen. Depends on Core. Only loaded in Widget Extension target. |
+
+> **Why this matters:** In previous versions, the widget's `import SwiftUI` lived in the same target as the plugin, causing `SwiftUICore` to be linked into the main app binary. On iOS 16.0–16.0.x, `SwiftUICore.framework` doesn't exist as a standalone framework, causing an immediate crash at launch. This architecture completely eliminates that problem.
+
+---
 
 ## Requirements
 
@@ -33,65 +66,119 @@ This ensures the **main app binary never links SwiftUI**, fixing the `SwiftUICor
 | iOS | 15.0+ (Live Activities require 16.2+) |
 | Android | API 26+ (Android 8.0) |
 | Xcode | 16+ |
+| Node.js | 18+ |
 
-## Installation
+---
+
+## Installation (New Project)
+
+### Step 1: Install the npm package
 
 ```bash
 npm install @jesushr0013/native-timer
+```
+
+### Step 2: Sync with native platforms
+
+```bash
 npx cap sync
 ```
 
+This will:
+- Copy the plugin to `node_modules/`
+- Update `ios/App/Podfile` with the plugin's pod dependency
+- Run `pod install` in the `ios/` folder
+- Copy plugin files to the Android project
+
+---
+
 ## iOS Setup
 
-### 1. Add Widget Extension (for Live Activities)
+### Step 1: Verify pod installation
 
-In Xcode, add a **Widget Extension** target to your project for Live Activities support.
+After `npx cap sync`, verify that the plugin was installed correctly:
 
-#### Using CocoaPods
+```bash
+cd ios
+pod install
+cd ..
+```
 
-In your Widget Extension's `Podfile` target, add:
+You should see `Jesushr0013NativeTimer` in the pod list. This pod includes **only** `Core/` + `Plugin/` — **no SwiftUI**.
+
+### Step 2: Enable Live Activities in Info.plist
+
+Open `ios/App/App/Info.plist` and add:
+
+```xml
+<key>NSSupportsLiveActivities</key>
+<true/>
+```
+
+Or in Xcode: open Info.plist → add row → key `NSSupportsLiveActivities` → type `Boolean` → value `YES`.
+
+### Step 3: Add Widget Extension (required for Live Activities)
+
+Live Activities need a **Widget Extension** target in your Xcode project:
+
+1. Open `ios/App/App.xcworkspace` in Xcode
+2. File → New → Target → **Widget Extension**
+3. Name it (e.g. `TimerWidgetExtension`)
+4. Uncheck "Include Configuration App Intent" (not needed)
+5. Click Finish
+
+### Step 4: Add NativeTimerKit to Widget Extension
+
+#### Option A: CocoaPods (recommended for Capacitor projects)
+
+Edit your `ios/App/Podfile` and add a target block for the Widget Extension:
 
 ```ruby
-target 'YourWidgetExtension' do
+target 'App' do
+  capacitor_pods
+  # ... your existing pods
+end
+
+# Add this new block:
+target 'TimerWidgetExtension' do
   pod 'NativeTimerKit'
 end
 ```
 
-Then run:
+Then reinstall pods:
 
 ```bash
-cd ios && pod install
+cd ios
+pod install
+cd ..
 ```
 
-#### Using Swift Package Manager
+#### Option B: Swift Package Manager
 
-Add the `NativeTimerLiveActivities` product from this package to your Widget Extension target in Xcode:
-
-1. File → Add Package Dependencies
+1. In Xcode: File → Add Package Dependencies
 2. Enter: `https://github.com/jesherram/native-timer.git`
 3. Select version `8.2.0` or higher
-4. Add `NativeTimerLiveActivities` to your **Widget Extension** target
-5. Add `Jesushr0013NativeTimer` to your **App** target (if not auto-resolved by Capacitor)
+4. Add `NativeTimerLiveActivities` library to your **Widget Extension** target
 
-### 2. Widget Extension Code
+### Step 5: Write the Widget Extension code
 
-In your Widget Extension's main file:
+Replace the auto-generated Widget Extension code with:
 
 ```swift
 import WidgetKit
 import SwiftUI
+import ActivityKit
 
-// CocoaPods:
-import MeycagesalNativeTimer  // provides WorkSessionTimerAttributes
-// SPM:
+// CocoaPods imports:
+import MeycagesalNativeTimer   // provides WorkSessionTimerAttributes + NativeTimerManager
+import NativeTimerKit           // provides NativeTimerWidget (pre-built UI)
+
+// If using SPM instead, replace the imports above with:
 // import NativeTimerCore
-
-// If using the pre-built widget:
-import NativeTimerKit  // CocoaPods
-// import NativeTimerLiveActivities  // SPM
+// import NativeTimerLiveActivities
 
 @main
-struct YourWidgetBundle: WidgetBundle {
+struct TimerWidgetBundle: WidgetBundle {
     var body: some Widget {
         if #available(iOS 16.1, *) {
             NativeTimerWidget()
@@ -100,33 +187,44 @@ struct YourWidgetBundle: WidgetBundle {
 }
 ```
 
-Or build your own custom widget using `WorkSessionTimerAttributes`:
+That's it! The `NativeTimerWidget` comes pre-built with:
+- Lock Screen banner with gradient background
+- Dynamic Island (expanded, compact, and minimal views)
+- Live timer counter using SwiftUI `.timer` style
+- Customizable accent color via `primaryColor`
+
+#### Optional: Build your own custom widget
+
+If you want to customize the widget UI, use `WorkSessionTimerAttributes` directly:
 
 ```swift
 import ActivityKit
 import SwiftUI
 import WidgetKit
-
-// CocoaPods:
-import MeycagesalNativeTimer
-// SPM:
-// import NativeTimerCore
+import MeycagesalNativeTimer  // or NativeTimerCore for SPM
 
 @available(iOS 16.1, *)
 struct MyCustomTimerWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkSessionTimerAttributes.self) { context in
-            // Your custom Lock Screen UI
-            Text(context.state.elapsedTime)
+            // Lock Screen UI
+            VStack {
+                Text(context.state.title)
+                Text(context.state.elapsedTime)
+                    .font(.title.bold())
+            }
+            .padding()
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.bottom) {
                     Text(context.state.elapsedTime)
+                        .font(.title2.bold())
                 }
             } compactLeading: {
                 Image(systemName: "timer")
             } compactTrailing: {
                 Text(context.state.elapsedTime)
+                    .font(.caption2)
             } minimal: {
                 Image(systemName: "timer")
             }
@@ -135,128 +233,208 @@ struct MyCustomTimerWidget: Widget {
 }
 ```
 
-### 3. Entitlements
+**Available fields in `context.state`:**
 
-Add the `Push Notifications` capability and enable `Supports Live Activities` in your `Info.plist`:
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | `String` | Session name |
+| `elapsedTime` | `String` | Formatted elapsed time (e.g. `"1 h 30 min"`) |
+| `status` | `String` | Session status (e.g. `"active"`) |
+| `startTime` | `String` | ISO 8601 start date |
+| `primaryColor` | `String` | Hex color (e.g. `"#0045a5"`) |
 
-```xml
-<key>NSSupportsLiveActivities</key>
-<true/>
-```
+### Step 6: No SwiftUICore workaround needed
 
-### 4. No SwiftUICore workaround needed (v8.2.0+)
+> **v8.2.0+:** Previous versions required adding `-weak_framework SwiftUICore` to the App target's linker flags. **This is no longer necessary.** The plugin target does not link SwiftUI at all.
+>
+> If you have this flag from a previous version, you can safely **remove it** from the App target. Keep it **only** in the Widget Extension target (the `NativeTimerKit` pod handles this automatically).
 
-Previous versions required `-weak_framework SwiftUICore` in linker flags. **This is no longer needed** — the plugin target no longer links SwiftUI at all.
+---
 
 ## Android Setup
 
-The plugin automatically manages a Foreground Service. Make sure your `AndroidManifest.xml` includes:
+### Step 1: Permissions
+
+Make sure your `android/app/src/main/AndroidManifest.xml` includes:
 
 ```xml
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 ```
 
+### Step 2: That's it
+
+The plugin automatically registers the foreground service and notification channel. No additional native code is needed.
+
+---
+
 ## Usage
+
+### Import
 
 ```typescript
 import { NativeTimer } from '@jesushr0013/native-timer';
+```
 
-// Start a timer
-// Note: title/body are for the Android notification only.
-// The iOS widget always shows "⚡ Jornada Activa" as the title.
+### Basic Timer
+
+```typescript
+// Start a work shift timer
 await NativeTimer.startTimer({
-  startTime: Date.now(),
-  title: 'Jornada Activa',
-  body: 'Timer en marcha...',
-  primaryColor: '#0045a5', // optional — widget & notification accent color
+  startTime: Date.now(),           // timestamp in ms
+  title: 'Jornada Activa',         // Android notification title
+  body: 'Timer en marcha...',      // Android notification body
+  primaryColor: '#0045a5',         // optional: accent color
 });
 
-// Check if timer is running
+// Check if running
 const { isRunning } = await NativeTimer.isTimerRunning();
 
-// Get elapsed time (ms)
+// Get elapsed time in milliseconds
 const { elapsedTime } = await NativeTimer.getElapsedTime();
 
-// Update notification text
+// Update the Android notification text
 await NativeTimer.updateNotification({
-  title: 'Still working',
-  body: '2h 30min elapsed',
+  title: 'Jornada Activa',
+  body: '2h 30min transcurridos',
 });
 
-// Stop the timer
+// Stop everything
 await NativeTimer.stopTimer();
 ```
 
-### Live Activities (iOS only)
+### Live Activities (iOS 16.2+ only)
 
 ```typescript
-// Check availability
+// 1. Check if Live Activities are available
 const { available } = await NativeTimer.areLiveActivitiesAvailable();
 
 if (available) {
-  // Start Live Activity
+  // 2. Start a Live Activity (shows in Dynamic Island + Lock Screen)
   const { activityId } = await NativeTimer.startLiveActivity({
-    title: 'Work Session',
-    startTime: new Date().toISOString(),
-    elapsedTime: '0 h 0 min',
+    title: 'Jornada Laboral',
+    startTime: new Date().toISOString(),   // ISO 8601 format
+    elapsedTime: '0 h 0 min',             // formatted string
     status: 'active',
-    primaryColor: '#0045a5',
+    primaryColor: '#0045a5',               // optional
   });
 
-  // Update Live Activity
+  // 3. Update the Live Activity periodically
   await NativeTimer.updateLiveActivity({
     activityId: activityId!,
     elapsedTime: '1 h 30 min',
     status: 'active',
   });
 
-  // Stop Live Activity
+  // 4. Stop the Live Activity when the shift ends
   await NativeTimer.stopLiveActivity({ activityId: activityId! });
-
-  // Or stop all at once
-  await NativeTimer.stopAllLiveActivities();
 }
+
+// Or stop ALL Live Activities at once (useful for cleanup)
+await NativeTimer.stopAllLiveActivities();
 ```
 
-### Foreground State Management
+### Smart Foreground/Background Management
 
 ```typescript
-// Tell the plugin when your app goes to background/foreground
-// to manage notifications intelligently
+import { App } from '@capacitor/app';
+
+// Tell the plugin when the app goes to foreground/background
+// This controls whether local notifications are shown
+// (only shown in background to avoid bothering the user)
 App.addListener('appStateChange', ({ isActive }) => {
   NativeTimer.setAppForegroundState({ inForeground: isActive });
 });
 
-// Reset notification dismissed state
+// Reset the "notification dismissed" state when reopening the app
 await NativeTimer.resetNotificationState();
 ```
 
-### Event Listener
+### Timer Update Listener
 
 ```typescript
-// Listen for periodic timer updates
+// Listen for periodic updates (every ~30 seconds)
 const listener = await NativeTimer.addListener('timerUpdate', (data) => {
   console.log('Elapsed:', data.elapsedTime, 'ms');
   console.log('Formatted:', data.formattedTime);
 });
 
-// Remove all listeners
+// Clean up when done
 await NativeTimer.removeAllListeners();
 ```
 
-## API
+### Complete Example
+
+```typescript
+import { NativeTimer } from '@jesushr0013/native-timer';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
+
+let currentActivityId: string | null = null;
+
+// --- Start shift ---
+async function startShift() {
+  const now = Date.now();
+  const color = '#0045a5';
+
+  // Start the native timer (Android foreground service + iOS timer)
+  await NativeTimer.startTimer({
+    startTime: now,
+    title: 'Jornada Activa',
+    body: 'Registrando tu jornada laboral...',
+    primaryColor: color,
+  });
+
+  // On iOS, also start a Live Activity
+  if (Capacitor.getPlatform() === 'ios') {
+    const { available } = await NativeTimer.areLiveActivitiesAvailable();
+    if (available) {
+      const { activityId } = await NativeTimer.startLiveActivity({
+        title: 'Jornada Laboral',
+        startTime: new Date(now).toISOString(),
+        elapsedTime: '0 h 0 min',
+        status: 'active',
+        primaryColor: color,
+      });
+      currentActivityId = activityId ?? null;
+    }
+  }
+}
+
+// --- Stop shift ---
+async function stopShift() {
+  await NativeTimer.stopTimer();
+
+  if (currentActivityId) {
+    await NativeTimer.stopLiveActivity({ activityId: currentActivityId });
+    currentActivityId = null;
+  }
+}
+
+// --- Foreground/background awareness ---
+App.addListener('appStateChange', ({ isActive }) => {
+  NativeTimer.setAppForegroundState({ inForeground: isActive });
+  if (isActive) {
+    NativeTimer.resetNotificationState();
+  }
+});
+```
+
+---
+
+## API Reference
 
 ### `startTimer(options)`
 
-Inicia el timer nativo. En Android crea un Foreground Service con notificación persistente. En iOS prepara el timer interno para Live Activities.
+Starts the native timer. On Android, creates a Foreground Service with a persistent notification. On iOS, prepares the internal timer for Live Activities.
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
-| `startTime` | `number` | Yes | Timestamp en milisegundos (ej: `Date.now()`) del inicio de la jornada |
-| `title` | `string` | Yes | Título de la notificación (solo Android) |
-| `body` | `string` | Yes | Cuerpo de la notificación (solo Android) |
-| `primaryColor` | `string` | No | Color hex (ej: `#0045a5`) para la notificación Android y el widget iOS |
+| `startTime` | `number` | Yes | Timestamp in milliseconds (e.g. `Date.now()`) |
+| `title` | `string` | Yes | Notification title (Android only) |
+| `body` | `string` | Yes | Notification body (Android only) |
+| `primaryColor` | `string` | No | Hex color (e.g. `"#0045a5"`) for notification and widget accent |
 
 **Returns:** `Promise<{ success: boolean }>`
 
@@ -264,7 +442,7 @@ Inicia el timer nativo. En Android crea un Foreground Service con notificación 
 
 ### `stopTimer()`
 
-Detiene el timer, cancela el Foreground Service (Android) y elimina todas las notificaciones pendientes.
+Stops the timer, cancels the Foreground Service (Android), and removes all pending notifications.
 
 **Returns:** `Promise<{ success: boolean }>`
 
@@ -272,12 +450,12 @@ Detiene el timer, cancela el Foreground Service (Android) y elimina todas las no
 
 ### `updateNotification(options)`
 
-Actualiza el texto de la notificación del timer en Android. En iOS no tiene efecto visible (el widget se actualiza via `updateLiveActivity`).
+Updates the Android notification text. On iOS, use `updateLiveActivity()` instead.
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
-| `title` | `string` | Yes | Nuevo título de la notificación |
-| `body` | `string` | Yes | Nuevo cuerpo de la notificación |
+| `title` | `string` | Yes | New notification title |
+| `body` | `string` | Yes | New notification body |
 
 **Returns:** `Promise<{ success: boolean }>`
 
@@ -285,7 +463,7 @@ Actualiza el texto de la notificación del timer en Android. En iOS no tiene efe
 
 ### `isTimerRunning()`
 
-Comprueba si hay un timer activo en ejecución.
+Checks if a timer is currently active.
 
 **Returns:** `Promise<{ isRunning: boolean }>`
 
@@ -293,19 +471,19 @@ Comprueba si hay un timer activo en ejecución.
 
 ### `getElapsedTime()`
 
-Obtiene el tiempo transcurrido desde que se inició el timer.
+Gets the elapsed time since the timer was started.
 
-**Returns:** `Promise<{ elapsedTime: number }>` — tiempo en milisegundos
+**Returns:** `Promise<{ elapsedTime: number }>` — time in milliseconds
 
 ---
 
 ### `setAppForegroundState(options)`
 
-Indica al plugin si la app está en primer o segundo plano. Esto controla si las notificaciones locales se muestran (solo en segundo plano) para no molestar al usuario mientras usa la app.
+Tells the plugin whether the app is in the foreground or background. Controls whether local notifications are displayed (only shown in background).
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
-| `inForeground` | `boolean` | Yes | `true` si la app está visible, `false` si está en segundo plano |
+| `inForeground` | `boolean` | Yes | `true` if the app is visible, `false` if backgrounded |
 
 **Returns:** `Promise<{ success: boolean }>`
 
@@ -313,7 +491,7 @@ Indica al plugin si la app está en primer o segundo plano. Esto controla si las
 
 ### `resetNotificationState()`
 
-Resetea el estado interno de "notificación descartada". Útil al volver a abrir la app para que las notificaciones puedan mostrarse de nuevo en segundo plano.
+Resets the internal "notification dismissed" state. Call this when reopening the app so notifications can be shown again in background.
 
 **Returns:** `Promise<{ success: boolean }>`
 
@@ -321,7 +499,7 @@ Resetea el estado interno de "notificación descartada". Útil al volver a abrir
 
 ### `areLiveActivitiesAvailable()` *(iOS only)*
 
-Verifica si el dispositivo soporta Live Activities (requiere iOS 16.2+ y que el usuario las tenga habilitadas).
+Checks if the device supports Live Activities (requires iOS 16.2+ and user permission).
 
 **Returns:** `Promise<{ available: boolean }>`
 
@@ -329,29 +507,29 @@ Verifica si el dispositivo soporta Live Activities (requiere iOS 16.2+ y que el 
 
 ### `startLiveActivity(options)` *(iOS only)*
 
-Inicia una Live Activity que muestra el timer de jornada en la Dynamic Island (iPhone 14 Pro+) y en la pantalla de bloqueo. El widget muestra "⚡ Jornada Activa" con un contador en tiempo real.
+Starts a Live Activity showing the shift timer on Dynamic Island (iPhone 14 Pro+) and Lock Screen.
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
-| `title` | `string` | Yes | Nombre de la sesión (usado internamente) |
-| `startTime` | `string` | Yes | Fecha/hora de inicio en formato ISO 8601 |
-| `elapsedTime` | `string` | Yes | Tiempo transcurrido formateado (ej: `"1 h 30 min"`) |
-| `status` | `string` | Yes | Estado de la jornada (ej: `"active"`, `"paused"`) |
-| `primaryColor` | `string` | No | Color hex para el widget (default: `#0045a5`) |
+| `title` | `string` | Yes | Session name |
+| `startTime` | `string` | Yes | Start date/time in ISO 8601 format |
+| `elapsedTime` | `string` | Yes | Formatted elapsed time (e.g. `"1 h 30 min"`) |
+| `status` | `string` | Yes | Session status (e.g. `"active"`, `"paused"`) |
+| `primaryColor` | `string` | No | Hex color for the widget (default: `"#0045a5"`) |
 
-**Returns:** `Promise<{ success: boolean; activityId?: string }>` — el `activityId` se usa para actualizar o detener la actividad
+**Returns:** `Promise<{ success: boolean; activityId?: string }>`
 
 ---
 
 ### `updateLiveActivity(options)` *(iOS only)*
 
-Actualiza una Live Activity existente con nuevo tiempo transcurrido y estado.
+Updates an existing Live Activity with new elapsed time and status.
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
-| `activityId` | `string` | Yes | ID devuelto por `startLiveActivity` |
-| `elapsedTime` | `string` | Yes | Tiempo transcurrido actualizado (ej: `"2 h 15 min"`) |
-| `status` | `string` | Yes | Estado actual (ej: `"active"`) |
+| `activityId` | `string` | Yes | ID returned by `startLiveActivity` |
+| `elapsedTime` | `string` | Yes | Updated elapsed time (e.g. `"2 h 15 min"`) |
+| `status` | `string` | Yes | Current status (e.g. `"active"`) |
 
 **Returns:** `Promise<{ success: boolean }>`
 
@@ -359,11 +537,11 @@ Actualiza una Live Activity existente con nuevo tiempo transcurrido y estado.
 
 ### `stopLiveActivity(options)` *(iOS only)*
 
-Detiene una Live Activity específica y la elimina de la Dynamic Island y pantalla de bloqueo.
+Stops a specific Live Activity and removes it from Dynamic Island and Lock Screen.
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
-| `activityId` | `string` | Yes | ID devuelto por `startLiveActivity` |
+| `activityId` | `string` | Yes | ID returned by `startLiveActivity` |
 
 **Returns:** `Promise<{ success: boolean }>`
 
@@ -371,7 +549,7 @@ Detiene una Live Activity específica y la elimina de la Dynamic Island y pantal
 
 ### `stopAllLiveActivities()` *(iOS only)*
 
-Detiene **todas** las Live Activities activas del plugin. Útil para limpieza al cerrar sesión o al detener la jornada.
+Stops **all** active Live Activities from this plugin. Useful for cleanup on logout or shift end.
 
 **Returns:** `Promise<{ success: boolean }>`
 
@@ -379,7 +557,7 @@ Detiene **todas** las Live Activities activas del plugin. Útil para limpieza al
 
 ### `addListener('timerUpdate', callback)`
 
-Escucha actualizaciones periódicas del timer (cada ~30 segundos).
+Listens for periodic timer updates (~30 seconds).
 
 ```typescript
 const listener = await NativeTimer.addListener('timerUpdate', (data) => {
@@ -392,58 +570,110 @@ const listener = await NativeTimer.addListener('timerUpdate', (data) => {
 
 ### `removeAllListeners()`
 
-Elimina todos los listeners registrados.
+Removes all registered listeners.
 
 **Returns:** `Promise<void>`
 
-## Migrating from v8.1.x to v8.2.0
+---
+
+## Upgrading from v8.1.x to v8.2.0
 
 ### What changed
 
-The iOS code was split into 3 separate targets. The main plugin **no longer links SwiftUI**, fixing crashes on iOS 16.
+The iOS code was split from 1 target into 3 separate targets. The main plugin **no longer links SwiftUI**, completely fixing the `SwiftUICore` crash on iOS 16.
 
-### Steps
+### Step-by-step upgrade
 
-1. **Update the plugin:**
-   ```bash
-   npm install @jesushr0013/native-timer@8.2.0
-   ```
+```bash
+# 1. Update the plugin
+npm install @jesushr0013/native-timer@8.2.0
 
-2. **Remove local patches** (if you had modified the plugin's Swift files in `node_modules`):
-   ```bash
-   # If using patch-package, delete the old patch:
-   rm patches/@jesushr0013+native-timer+*.patch
-   ```
+# 2. Remove local patches (if you had modified the plugin's Swift files locally)
+#    Only needed if you used patch-package:
+rm patches/@jesushr0013+native-timer+*.patch    # skip if you don't have patches
 
-3. **Sync and reinstall pods:**
-   ```bash
-   npx cap sync ios
-   cd ios
-   pod deintegrate
-   pod install --repo-update
-   cd ..
-   ```
+# 3. Sync Capacitor
+npx cap sync ios
 
-4. **Remove old linker flags** — In Xcode, go to your **App target** → Build Settings → Other Linker Flags and remove:
-   ```
-   -weak_framework SwiftUICore
-   ```
-   This flag is **no longer needed** in the main app target.
-   
-   > **Note:** Keep `-weak_framework SwiftUICore` only in your **Widget Extension** target if using `NativeTimerKit`.
+# 4. Reinstall pods from scratch (important: pod paths changed)
+cd ios
+pod deintegrate
+pod install --repo-update
+cd ..
+```
 
-5. **Clean build:**
-   - Xcode → Product → Clean Build Folder (`Cmd+Shift+K`)
+Then in **Xcode**:
+
+5. **Remove the old linker flag** (if you had it):
+   - Select your **App** target → Build Settings → Other Linker Flags
+   - **Remove** `-weak_framework SwiftUICore`
+   - This flag is no longer needed in the App target
+
+6. **Clean and rebuild**:
+   - Product → Clean Build Folder (`Cmd+Shift+K`)
    - Build (`Cmd+B`)
 
-6. **Verify on iOS 16 simulator** — The app should launch without `SwiftUICore` crash.
+7. **Test on iOS 16 simulator** — the app should launch without any `SwiftUICore` crash.
 
-### Breaking changes
+### Breaking changes for Widget Extension users
 
-- The `ios/LiveActivitiesKit/` directory was renamed to `ios/Core/` + `ios/LiveActivities/`
-- If your Widget Extension was importing files directly from `LiveActivitiesKit`, update imports:
-  - CocoaPods: `import MeycagesalNativeTimer` (unchanged)
-  - SPM: `import NativeTimerCore` (new) + `import NativeTimerLiveActivities` (new)
+If your Widget Extension was importing files from the old `LiveActivitiesKit` directory:
+
+| Before (v8.1.x) | After (v8.2.0) |
+|------------------|----------------|
+| Files in `ios/LiveActivitiesKit/` | Files split into `ios/Core/` + `ios/LiveActivities/` |
+| Single target compiled everything together | 3 separate targets |
+| `import MeycagesalNativeTimer` (CocoaPods) | `import MeycagesalNativeTimer` + `import NativeTimerKit` (CocoaPods) |
+| N/A (SPM) | `import NativeTimerCore` + `import NativeTimerLiveActivities` (SPM) |
+
+---
+
+## Troubleshooting
+
+### `SwiftUICore not available` crash on iOS 16
+
+**Cause:** You are using a version < 8.2.0, or pods were not reinstalled after upgrading.
+
+**Fix:**
+```bash
+npm install @jesushr0013/native-timer@8.2.0
+npx cap sync ios
+cd ios && pod deintegrate && pod install --repo-update && cd ..
+```
+
+### Live Activities not appearing
+
+1. Check that `NSSupportsLiveActivities` is `true` in `Info.plist`
+2. Check that the Widget Extension target has `NativeTimerKit` (CocoaPods) or `NativeTimerLiveActivities` (SPM)
+3. Check that the device is running iOS 16.2+
+4. Check that Live Activities are enabled in Settings → Your App → Live Activities
+
+### Pod install fails with "Unable to find a specification for NativeTimerKit"
+
+Run with `--repo-update` to refresh the pod specs cache:
+
+```bash
+cd ios
+pod install --repo-update
+cd ..
+```
+
+### Widget Extension shows blank / doesn't load
+
+Make sure your Widget Extension's `@main` bundle includes the widget:
+
+```swift
+@main
+struct TimerWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        if #available(iOS 16.1, *) {
+            NativeTimerWidget()
+        }
+    }
+}
+```
+
+---
 
 ## License
 
