@@ -16,7 +16,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 // Para formatear fechas
 import java.text.SimpleDateFormat;
@@ -52,6 +56,24 @@ public class NativeTimerService extends Service {
             return 0;
         }
         return System.currentTimeMillis() - instance.startTime;
+    }
+
+    /**
+     * Comprueba si la app tiene permiso de notificaciones.
+     * En API < 33 siempre devuelve true (POST_NOTIFICATIONS no existe).
+     * En API >= 33 valida permiso runtime Y estado global de notificaciones.
+     */
+    private boolean hasNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            boolean permissionGranted = ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED;
+            boolean notificationsEnabled = NotificationManagerCompat.from(this).areNotificationsEnabled();
+            Log.d(TAG, "hasNotificationPermission: permissionGranted=" + permissionGranted
+                    + ", notificationsEnabled=" + notificationsEnabled);
+            return permissionGranted && notificationsEnabled;
+        }
+        return true;
     }
 
     @Override
@@ -94,7 +116,14 @@ public class NativeTimerService extends Service {
             if (currentPrimaryColor == null) currentPrimaryColor = "#0045a5";
             
             Log.d(TAG, "Starting timer with primary color: " + currentPrimaryColor);
-            
+
+            // Defensive guard: abort if notification permission is missing
+            if (!hasNotificationPermission()) {
+                Log.w(TAG, "onStartCommand: notification permission missing — aborting startForeground, stopping self");
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+
             startTimerUpdates();
             
         } else if ("UPDATE_NOTIFICATION".equals(action)) {

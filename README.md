@@ -9,14 +9,14 @@ The widget displays a live "Jornada Activa" (Active Shift) timer designed specif
 ## Table of Contents
 
 - [Features](#features)
-- [Architecture (v8.2.0+)](#architecture-v820)
+- [Architecture (v8.2.1+)](#architecture-v821)
 - [Requirements](#requirements)
-- [Installation (New Project)](#installation-new-project)
+- [Installation](#installation)
 - [iOS Setup](#ios-setup)
 - [Android Setup](#android-setup)
 - [Usage](#usage)
 - [API Reference](#api-reference)
-- [Upgrading from v8.1.x to v8.2.0](#upgrading-from-v81x-to-v820)
+- [Upgrading from v8.1.x to v8.2.1](#upgrading-from-v81x-to-v821)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 
@@ -33,28 +33,33 @@ The widget displays a live "Jornada Activa" (Active Shift) timer designed specif
 
 ---
 
-## Architecture (v8.2.0+)
+## Architecture (v8.2.1+)
 
-Starting from v8.2.0, the iOS code is split into **3 independent targets** to prevent the main app from linking SwiftUI/SwiftUICore:
+The iOS code is split into **2 SPM/CocoaPods targets** to prevent the main app from linking SwiftUI/SwiftUICore:
 
 ```
 ios/
-├── Core/                          ← NativeTimerCore target
-│   ├── NativeTimerManager.swift       (timer logic, ActivityKit management)
-│   └── WorkSessionTimerAttributes.swift (ActivityAttributes model)
-├── Plugin/                        ← Jesushr0013NativeTimer target
-│   └── NativeTimerPlugin.swift        (Capacitor bridge)
-└── LiveActivities/                ← NativeTimerLiveActivities target
-    └── NativeTimerWidget.swift        (SwiftUI widget for Dynamic Island)
+├── Core/                          ┐
+│   ├── NativeTimerManager.swift   │  Jesushr0013NativeTimer target
+│   └── WorkSessionTimerAttributes.swift  │  (NO SwiftUI — safe on iOS 15+)
+├── Plugin/                        │
+│   └── NativeTimerPlugin.swift    ┘
+└── LiveActivities/                ← Jesushr0013NativeTimerLiveActivities target
+    └── NativeTimerWidget.swift       (SwiftUI — only in Widget Extension)
 ```
 
-| Target | SwiftUI? | What it does |
-|--------|----------|--------------|
-| **NativeTimerCore** | **No** | Timer logic, notification management, `WorkSessionTimerAttributes` model, `NativeTimerManager` class. Safe on iOS 15+. |
-| **Jesushr0013NativeTimer** | **No** | Capacitor plugin bridge (`NativeTimerPlugin`). Depends on Core. Auto-discovered by Capacitor. Safe on iOS 15+. |
-| **NativeTimerLiveActivities** | **Yes** | SwiftUI widget for Dynamic Island and Lock Screen. Depends on Core. Only loaded in Widget Extension target. |
+| Target (SPM / Pod) | SwiftUI? | What it contains |
+|---------------------|----------|------------------|
+| **Jesushr0013NativeTimer** / `Jesushr0013NativeTimer` pod | **No** | Timer logic (`NativeTimerManager`), `WorkSessionTimerAttributes` model, Capacitor plugin bridge (`NativeTimerPlugin`). Compiles `ios/Core/` + `ios/Plugin/` together. Auto-discovered by Capacitor. Safe on iOS 15+. |
+| **Jesushr0013NativeTimerLiveActivities** / `NativeTimerKit` pod | **Yes** | SwiftUI widget (`NativeTimerWidget`) for Dynamic Island + Lock Screen. Compiles `ios/LiveActivities/`. Depends on the main target. Only loaded in the Widget Extension. |
 
-> **Why this matters:** In previous versions, the widget's `import SwiftUI` lived in the same target as the plugin, causing `SwiftUICore` to be linked into the main app binary. On iOS 16.0–16.0.x, `SwiftUICore.framework` doesn't exist as a standalone framework, causing an immediate crash at launch. This architecture completely eliminates that problem.
+> **Why this matters:** In previous versions (≤ 8.1.x), the widget's `import SwiftUI` lived in the same compile target as the plugin, causing `SwiftUICore` to be linked into the main app binary. On iOS 16.0–16.0.x, `SwiftUICore.framework` doesn't exist as a standalone framework, causing an **immediate crash at launch**. This 2-target architecture completely eliminates that problem — SwiftUI only exists in the Widget Extension binary, never in the main app.
+
+### How it works
+
+1. **Main target** (`Jesushr0013NativeTimer`): Capacitor discovers this target and links it into your app. It contains the plugin bridge + timer logic + `ActivityKit` model. It does **NOT** import SwiftUI. It uses `#if canImport(ActivityKit)` guards so that ActivityKit is only used on iOS 16.1+.
+
+2. **Widget target** (`Jesushr0013NativeTimerLiveActivities`): This target compiles separately and is only linked into your Widget Extension target. It imports SwiftUI and the main target to access `WorkSessionTimerAttributes`. It provides `NativeTimerWidget` — a ready-to-use widget with Dynamic Island + Lock Screen UI.
 
 ---
 
@@ -70,7 +75,7 @@ ios/
 
 ---
 
-## Installation (New Project)
+## Installation
 
 ### Step 1: Install the npm package
 
@@ -104,7 +109,7 @@ pod install
 cd ..
 ```
 
-You should see `Jesushr0013NativeTimer` in the pod list. This pod includes **only** `Core/` + `Plugin/` — **no SwiftUI**.
+You should see `Jesushr0013NativeTimer` in the pod list. This pod includes **only** `ios/Core/` + `ios/Plugin/` — **no SwiftUI**.
 
 ### Step 2: Enable Live Activities in Info.plist
 
@@ -148,17 +153,18 @@ end
 Then reinstall pods:
 
 ```bash
-cd ios
+cd ios/App
 pod install
-cd ..
+cd ../..
 ```
 
 #### Option B: Swift Package Manager
 
 1. In Xcode: File → Add Package Dependencies
 2. Enter: `https://github.com/jesherram/native-timer.git`
-3. Select version `8.2.0` or higher
-4. Add `NativeTimerLiveActivities` library to your **Widget Extension** target
+3. Select version `8.2.1` or higher
+4. Add **`Jesushr0013NativeTimerLiveActivities`** library to your **Widget Extension** target
+5. Add **`Jesushr0013NativeTimer`** library to your **App** target (Capacitor may do this automatically)
 
 ### Step 5: Write the Widget Extension code
 
@@ -170,12 +176,12 @@ import SwiftUI
 import ActivityKit
 
 // CocoaPods imports:
-import MeycagesalNativeTimer   // provides WorkSessionTimerAttributes + NativeTimerManager
+import MeycagesalNativeTimer   // provides WorkSessionTimerAttributes
 import NativeTimerKit           // provides NativeTimerWidget (pre-built UI)
 
 // If using SPM instead, replace the imports above with:
-// import NativeTimerCore
-// import NativeTimerLiveActivities
+// import Jesushr0013NativeTimer
+// import Jesushr0013NativeTimerLiveActivities
 
 @main
 struct TimerWidgetBundle: WidgetBundle {
@@ -201,7 +207,7 @@ If you want to customize the widget UI, use `WorkSessionTimerAttributes` directl
 import ActivityKit
 import SwiftUI
 import WidgetKit
-import MeycagesalNativeTimer  // or NativeTimerCore for SPM
+import MeycagesalNativeTimer  // or Jesushr0013NativeTimer for SPM
 
 @available(iOS 16.1, *)
 struct MyCustomTimerWidget: Widget {
@@ -245,9 +251,9 @@ struct MyCustomTimerWidget: Widget {
 
 ### Step 6: No SwiftUICore workaround needed
 
-> **v8.2.0+:** Previous versions required adding `-weak_framework SwiftUICore` to the App target's linker flags. **This is no longer necessary.** The plugin target does not link SwiftUI at all.
+> **v8.2.1+:** Previous versions required adding `-weak_framework SwiftUICore` to the App target's linker flags. **This is no longer necessary.** The plugin target does not link SwiftUI at all.
 >
-> If you have this flag from a previous version, you can safely **remove it** from the App target. Keep it **only** in the Widget Extension target (the `NativeTimerKit` pod handles this automatically).
+> If you have this flag from a previous version, you can safely **remove it** from the App target. The `NativeTimerKit` pod handles weak linking of SwiftUI automatically in the Widget Extension only.
 
 ---
 
@@ -505,6 +511,14 @@ Checks if the device supports Live Activities (requires iOS 16.2+ and user permi
 
 ---
 
+### `hasActiveLiveActivities()` *(iOS only)*
+
+Checks if there are currently active Live Activities from this plugin.
+
+**Returns:** `Promise<{ hasActive: boolean }>`
+
+---
+
 ### `startLiveActivity(options)` *(iOS only)*
 
 Starts a Live Activity showing the shift timer on Dynamic Island (iPhone 14 Pro+) and Lock Screen.
@@ -576,17 +590,24 @@ Removes all registered listeners.
 
 ---
 
-## Upgrading from v8.1.x to v8.2.0
+## Upgrading from v8.1.x to v8.2.1
 
 ### What changed
 
-The iOS code was split from 1 target into 3 separate targets. The main plugin **no longer links SwiftUI**, completely fixing the `SwiftUICore` crash on iOS 16.
+The iOS code was split from **1 target** (everything together) into **2 separate targets**. The main plugin target **no longer links SwiftUI**, completely fixing the `SwiftUICore` crash on iOS 16.
+
+| Before (v8.1.x) | After (v8.2.1) |
+|------------------|----------------|
+| All Swift files in `ios/LiveActivitiesKit/` | Files split into `ios/Core/` + `ios/Plugin/` + `ios/LiveActivities/` |
+| Single compile target (Plugin + Widget together) | 2 targets: main (Core+Plugin) and widget (LiveActivities) |
+| `import SwiftUI` linked into main app → crash on iOS 16 | SwiftUI **only** in Widget Extension binary |
+| Required `-weak_framework SwiftUICore` in App target | **Not needed** — remove it from App target |
 
 ### Step-by-step upgrade
 
 ```bash
 # 1. Update the plugin
-npm install @jesushr0013/native-timer@8.2.0
+npm install @jesushr0013/native-timer@8.2.1
 
 # 2. Remove local patches (if you had modified the plugin's Swift files locally)
 #    Only needed if you used patch-package:
@@ -595,11 +616,11 @@ rm patches/@jesushr0013+native-timer+*.patch    # skip if you don't have patches
 # 3. Sync Capacitor
 npx cap sync ios
 
-# 4. Reinstall pods from scratch (important: pod paths changed)
-cd ios
+# 4. Reinstall pods from scratch (important: pod source paths changed)
+cd ios/App
 pod deintegrate
 pod install --repo-update
-cd ..
+cd ../..
 ```
 
 Then in **Xcode**:
@@ -609,22 +630,15 @@ Then in **Xcode**:
    - **Remove** `-weak_framework SwiftUICore`
    - This flag is no longer needed in the App target
 
-6. **Clean and rebuild**:
+6. **Update Widget Extension** (if you have one):
+   - Make sure `NativeTimerKit` pod is in your Podfile for the Widget Extension target
+   - Update imports if needed (see [Step 5 in iOS Setup](#step-5-write-the-widget-extension-code))
+
+7. **Clean and rebuild**:
    - Product → Clean Build Folder (`Cmd+Shift+K`)
    - Build (`Cmd+B`)
 
-7. **Test on iOS 16 simulator** — the app should launch without any `SwiftUICore` crash.
-
-### Breaking changes for Widget Extension users
-
-If your Widget Extension was importing files from the old `LiveActivitiesKit` directory:
-
-| Before (v8.1.x) | After (v8.2.0) |
-|------------------|----------------|
-| Files in `ios/LiveActivitiesKit/` | Files split into `ios/Core/` + `ios/LiveActivities/` |
-| Single target compiled everything together | 3 separate targets |
-| `import MeycagesalNativeTimer` (CocoaPods) | `import MeycagesalNativeTimer` + `import NativeTimerKit` (CocoaPods) |
-| N/A (SPM) | `import NativeTimerCore` + `import NativeTimerLiveActivities` (SPM) |
+8. **Test on iOS 16 simulator** — the app should launch without any `SwiftUICore` crash.
 
 ---
 
@@ -632,46 +646,62 @@ If your Widget Extension was importing files from the old `LiveActivitiesKit` di
 
 ### `SwiftUICore not available` crash on iOS 16
 
-**Cause:** You are using a version < 8.2.0, or pods were not reinstalled after upgrading.
+**Cause:** You are using a version < 8.2.1, or pods were not reinstalled after upgrading.
 
 **Fix:**
 ```bash
-npm install @jesushr0013/native-timer@8.2.0
+npm install @jesushr0013/native-timer@8.2.1
 npx cap sync ios
-cd ios && pod deintegrate && pod install --repo-update && cd ..
+cd ios/App && pod deintegrate && pod install --repo-update && cd ../..
 ```
+
+Then verify in Xcode:
+- App target → Build Settings → Other Linker Flags → should **NOT** contain `-weak_framework SwiftUICore`
+- Clean Build Folder → Build
 
 ### Live Activities not appearing
 
 1. Check that `NSSupportsLiveActivities` is `true` in `Info.plist`
-2. Check that the Widget Extension target has `NativeTimerKit` (CocoaPods) or `NativeTimerLiveActivities` (SPM)
+2. Check that the Widget Extension target has `NativeTimerKit` pod (CocoaPods) or `Jesushr0013NativeTimerLiveActivities` library (SPM)
 3. Check that the device is running iOS 16.2+
 4. Check that Live Activities are enabled in Settings → Your App → Live Activities
+5. Make sure the Widget Extension entry point includes `NativeTimerWidget()`:
+   ```swift
+   @main
+   struct TimerWidgetBundle: WidgetBundle {
+       var body: some Widget {
+           if #available(iOS 16.1, *) {
+               NativeTimerWidget()
+           }
+       }
+   }
+   ```
 
 ### Pod install fails with "Unable to find a specification for NativeTimerKit"
 
-Run with `--repo-update` to refresh the pod specs cache:
+The `NativeTimerKit` pod is a local podspec bundled with the plugin. Run with `--repo-update`:
 
 ```bash
-cd ios
+cd ios/App
 pod install --repo-update
-cd ..
+cd ../..
 ```
 
 ### Widget Extension shows blank / doesn't load
 
-Make sure your Widget Extension's `@main` bundle includes the widget:
+1. Make sure you imported both modules in the Widget Extension:
+   ```swift
+   import MeycagesalNativeTimer   // WorkSessionTimerAttributes
+   import NativeTimerKit           // NativeTimerWidget
+   ```
+2. Make sure your `@main` bundle references `NativeTimerWidget`
+3. Clean Build Folder and rebuild both the App and Widget Extension targets
 
-```swift
-@main
-struct TimerWidgetBundle: WidgetBundle {
-    var body: some Widget {
-        if #available(iOS 16.1, *) {
-            NativeTimerWidget()
-        }
-    }
-}
-```
+### Build error: "No such module 'NativeTimerCore'"
+
+If you upgraded from v8.2.0, the intermediate `NativeTimerCore` module was removed in v8.2.1. Update your imports:
+- **SPM**: `import Jesushr0013NativeTimer` (not `import NativeTimerCore`)
+- **CocoaPods**: `import MeycagesalNativeTimer` (unchanged)
 
 ---
 

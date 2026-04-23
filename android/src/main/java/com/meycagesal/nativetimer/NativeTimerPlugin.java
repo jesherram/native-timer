@@ -6,8 +6,14 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.util.Log;
+
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 @CapacitorPlugin(name = "NativeTimer")
 public class NativeTimerPlugin extends Plugin {
@@ -17,7 +23,16 @@ public class NativeTimerPlugin extends Plugin {
     @PluginMethod
     public void startTimer(PluginCall call) {
         Log.d(TAG, "startTimer called");
-        
+
+        if (!hasNotificationPermission()) {
+            Log.w(TAG, "startTimer blocked: notification permission not granted");
+            JSObject result = new JSObject();
+            result.put("success", false);
+            result.put("error", "notification_permission_required");
+            call.resolve(result);
+            return;
+        }
+
         Long startTime = call.getLong("startTime");
         String title = call.getString("title", "Timer activo");
         String body = call.getString("body", "00:00:00");
@@ -150,5 +165,24 @@ public class NativeTimerPlugin extends Plugin {
         // Implementar notificación a los listeners si es necesario
         // Por ahora el servicio maneja todo de forma independiente
         Log.d("NativeTimerPlugin", "Timer update: " + formattedTime + " (" + elapsedTime + "ms)");
+    }
+
+    /**
+     * Comprueba si la app tiene permiso de notificaciones.
+     * En API < 33 siempre es true (no existe POST_NOTIFICATIONS).
+     * En API >= 33 valida el permiso runtime Y el estado del canal.
+     */
+    private boolean hasNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            boolean permissionGranted = ContextCompat.checkSelfPermission(
+                    getContext(), Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED;
+            boolean notificationsEnabled = NotificationManagerCompat.from(getContext()).areNotificationsEnabled();
+            Log.d(TAG, "hasNotificationPermission: permissionGranted=" + permissionGranted
+                    + ", notificationsEnabled=" + notificationsEnabled);
+            return permissionGranted && notificationsEnabled;
+        }
+        // API < 33: POST_NOTIFICATIONS no existe, siempre permitido
+        return true;
     }
 }
